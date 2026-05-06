@@ -2,7 +2,7 @@
 // API "Cabeça" - IA pro BotConversa
 // Modelo: Llama 3.3 70B (Groq Free Tier)
 // Cliente: Private Academy
-// Versão: 2.0 (mensagens curtas + divididas em 2)
+// Versão: 2.1 (mensagens divididas + delay inteligente)
 // ============================================
 
 import express from "express";
@@ -26,13 +26,34 @@ const LIMITE_HISTORICO = 20;
 const EXPIRACAO_MS = 30 * 60 * 1000;
 
 // ============================================
-// PERSONALIDADE DO MATHEUS (V2 - mais curto)
+// CONFIG DO DELAY (em milissegundos)
+// ============================================
+const DELAY_BASE_MS = 2500;          // 2.5s mínimo (sempre espera isso)
+const DELAY_POR_PALAVRA_MS = 250;    // 0.25s a cada palavra que o cliente mandou
+const DELAY_MAX_MS = 7000;           // 7s máximo (BotConversa tem timeout de 10s)
+const DELAY_VARIACAO_MS = 1500;      // até 1.5s de variação aleatória pra parecer mais humano
+
+// Função que calcula quanto tempo "esperar antes de responder"
+function calcularDelay(mensagemCliente) {
+  const palavras = mensagemCliente.trim().split(/\s+/).length;
+  const variacao = Math.random() * DELAY_VARIACAO_MS;
+  const delay = DELAY_BASE_MS + (palavras * DELAY_POR_PALAVRA_MS) + variacao;
+  return Math.min(delay, DELAY_MAX_MS);
+}
+
+// Helper pra criar pausa
+function aguardar(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ============================================
+// PERSONALIDADE DO MATHEUS
 // ============================================
 const SYSTEM_PROMPT = `Você é o Matheus, gerente de investimentos da Private Capital / Private Academy.
 
 # IDENTIDADE
 - Seu nome é Matheus
-- Gerente de investimentos da Private Academy
+- Gerente de investimentos da Private Capital / Private Academy
 - Tem o apoio de um Trader profissional formado em Economia que lidera a operação
 
 # FORMATO DAS RESPOSTAS — REGRA MAIS IMPORTANTE
@@ -131,7 +152,7 @@ Você: "Show, fico feliz pelo interesse. ||| Um momento, já vou te passar mais 
 `;
 
 // ============================================
-// Função pra obter/criar histórico do cliente
+// Função pra obter/criar histórico
 // ============================================
 function pegarHistorico(clienteId) {
   const agora = Date.now();
@@ -151,6 +172,8 @@ function pegarHistorico(clienteId) {
 // ROTA PRINCIPAL: /chat
 // ============================================
 app.post("/chat", async (req, res) => {
+  const inicioRequest = Date.now();
+
   try {
     const { cliente_id, mensagem, nome_cliente } = req.body;
 
@@ -161,6 +184,10 @@ app.post("/chat", async (req, res) => {
     }
 
     console.log(`[${new Date().toISOString()}] Cliente ${cliente_id}: ${mensagem}`);
+
+    // Calcula o delay baseado no tamanho da mensagem do cliente
+    const delayCalculado = calcularDelay(mensagem);
+    console.log(`[${new Date().toISOString()}] Delay calculado: ${Math.round(delayCalculado)}ms`);
 
     const historico = pegarHistorico(cliente_id);
     historico.mensagens.push({ role: "user", content: mensagem });
@@ -174,21 +201,25 @@ app.post("/chat", async (req, res) => {
       ...historico.mensagens.slice(-LIMITE_HISTORICO),
     ];
 
-    const resposta = await ai.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: mensagensParaIA,
-      temperature: 0.8,
-      max_tokens: 300,
-    });
+    // Pede a resposta pra IA EM PARALELO ao delay (otimização!)
+    // Assim o tempo total = max(delay, tempo_da_IA), não a soma
+    const [resposta] = await Promise.all([
+      ai.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: mensagensParaIA,
+        temperature: 0.8,
+        max_tokens: 300,
+      }),
+      aguardar(delayCalculado),
+    ]);
 
     const textoResposta = resposta.choices[0].message.content;
     historico.mensagens.push({ role: "assistant", content: textoResposta });
 
-    // Detecta transferência
     const transferir = textoResposta.includes("[TRANSFERIR_HUMANO]");
     const respostaLimpa = textoResposta.replace("[TRANSFERIR_HUMANO]", "").trim();
 
-    // Divide a resposta em 2 partes usando o separador |||
+    // Divide a resposta em 2 partes
     const partes = respostaLimpa.split("|||").map(p => p.trim()).filter(p => p.length > 0);
 
     let resposta_1 = "";
@@ -202,13 +233,15 @@ app.post("/chat", async (req, res) => {
       resposta_2 = "";
     }
 
+    const tempoTotal = Date.now() - inicioRequest;
     console.log(`[${new Date().toISOString()}] IA parte 1: ${resposta_1}`);
     if (resposta_2) console.log(`[${new Date().toISOString()}] IA parte 2: ${resposta_2}`);
+    console.log(`[${new Date().toISOString()}] Tempo total: ${tempoTotal}ms`);
 
     return res.json({
       resposta_1: resposta_1,
       resposta_2: resposta_2,
-      resposta: respostaLimpa.replace(/\|\|\|/g, " "), // compatibilidade com fluxo antigo
+      resposta: respostaLimpa.replace(/\|\|\|/g, " "),
       transferir_humano: transferir,
       tem_segunda_parte: resposta_2.length > 0,
     });
@@ -242,14 +275,12 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "2.0 (mensagens divididas)",
+    versao: "2.1 (mensagens divididas + delay inteligente)",
     conversas_ativas: conversas.size,
   });
 });
 
-// ============================================
 // Limpeza periódica
-// ============================================
 setInterval(() => {
   const agora = Date.now();
   for (const [id, dados] of conversas.entries()) {
@@ -263,5 +294,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint do BotConversa: POST /chat`);
-  console.log(`🆕 Versão 2.0: respostas divididas em 2 partes`);
+  console.log(`🆕 Versão 2.1: respostas divididas + delay inteligente`);
 });
