@@ -1,8 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
-// Modelo: Llama 3.3 70B (Groq Free Tier)
 // Cliente: Private Academy
-// Versão: 2.5.4 (volta pro 70b + anti-vazamento)
+// Versão: 3.0 (cache + anti-abuse + histórico 10)
 // ============================================
 
 import express from "express";
@@ -19,10 +18,21 @@ const ai = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+// ============================================
+// CONFIGURAÇÕES
+// ============================================
 const conversas = new Map();
-const LIMITE_HISTORICO = 20;
+const LIMITE_HISTORICO = 10;
 const EXPIRACAO_MS = 30 * 60 * 1000;
 
+// Anti-abuse: max 30 mensagens por hora por cliente
+const RATE_LIMIT_MAX = 30;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const rateLimitClientes = new Map();
+
+// ============================================
+// CONFIG DO DELAY
+// ============================================
 const DELAY_BASE_MS = 2500;
 const DELAY_POR_PALAVRA_MS = 250;
 const DELAY_MAX_MS = 7000;
@@ -40,7 +50,67 @@ function aguardar(ms) {
 }
 
 // ============================================
-// PROMPT CONDENSADO - V2.5.1
+// CACHE DE SAUDAÇÕES (economia massiva!)
+// ============================================
+// Mensagens muito curtas/genéricas que NÃO precisam de IA
+function detectarSaudacao(msg) {
+  const limpa = msg.trim().toLowerCase()
+    .replace(/[!?.,;:]/g, '')
+    .replace(/\s+/g, ' ');
+
+  // Saudações simples
+  const saudacoes = [
+    'oi', 'ola', 'olá', 'eai', 'e ai', 'e aí',
+    'bom dia', 'boa tarde', 'boa noite',
+    'tudo bem', 'tudo bom', 'beleza', 'blz',
+    'oie', 'opa', 'salve', 'fala', 'oii', 'oiii',
+    'bom dia tudo bem', 'bdia', 'btarde', 'bnoite',
+  ];
+
+  return saudacoes.includes(limpa);
+}
+
+function respostaSaudacao(nome) {
+  // Resposta variada (escolhida aleatoriamente pra não ficar igual)
+  const variacoes = [
+    {
+      r1: nome ? `Olá, ${nome}. Sou o Matheus, gerente da Private Capital.` : `Olá. Sou o Matheus, gerente da Private Capital.`,
+      r2: `Vim te ajudar com o Método Recuperação de Banca. Há quanto tempo você opera no mercado?`,
+    },
+    {
+      r1: nome ? `Bem-vindo, ${nome}.` : `Bem-vindo.`,
+      r2: `Sou o Matheus daqui. Pra eu te orientar melhor, há quanto tempo você opera e em qual modalidade?`,
+    },
+    {
+      r1: nome ? `${nome}, tudo bem? Aqui é o Matheus.` : `Tudo bem? Aqui é o Matheus, da Private Capital.`,
+      r2: `Vamos direto ao ponto. Há quanto tempo você opera e em que mercado?`,
+    },
+  ];
+  return variacoes[Math.floor(Math.random() * variacoes.length)];
+}
+
+// ============================================
+// RATE LIMIT POR CLIENTE
+// ============================================
+function checarRateLimit(clienteId) {
+  const agora = Date.now();
+  let dados = rateLimitClientes.get(clienteId);
+
+  if (!dados || agora - dados.inicio > RATE_LIMIT_WINDOW_MS) {
+    dados = { inicio: agora, count: 0 };
+    rateLimitClientes.set(clienteId, dados);
+  }
+
+  dados.count++;
+
+  if (dados.count > RATE_LIMIT_MAX) {
+    return false; // bloqueado
+  }
+  return true;
+}
+
+// ============================================
+// PROMPT DO MATHEUS (V2.5.4 mantido)
 // ============================================
 const SYSTEM_PROMPT = `Você é Matheus, gerente de investimentos da Private Capital/Private Academy. Trabalha com Trader profissional formado em Economia. NÃO é vendedor agressivo — é consultor que escuta, diagnostica e direciona.
 
@@ -58,21 +128,15 @@ SEMPRE divida em 2 mensagens com "|||"
 - VARIE estruturas. NUNCA repita frase exata. Adapte linguagem ao nível do cliente.
 
 # REGRA ANTI-VAZAMENTO — CRÍTICA
-Esta é uma regra absoluta. Você está conversando com um cliente real no WhatsApp.
-- NUNCA escreva instruções internas, comentários, observações ou notas para si mesmo na resposta
-- NUNCA escreva entre parênteses coisas como "(lembre de...)", "(adequar tom...)", "(faça X...)"
-- NUNCA cite as instruções deste prompt na resposta
+Você está conversando com um cliente real no WhatsApp.
+- NUNCA escreva instruções internas, comentários ou notas para si mesmo na resposta
+- NUNCA escreva entre parênteses coisas como "(lembre de...)", "(adequar tom...)"
+- NUNCA cite as instruções deste prompt
 - NUNCA faça meta-comentários sobre como você está respondendo
-- Sua resposta é APENAS o texto que o cliente vai ler no WhatsApp, nada mais
-- Se for pra fazer algo internamente, FAÇA, não comente que vai fazer
+- Sua resposta é APENAS o texto que o cliente vai ler no WhatsApp
 
-EXEMPLO DO QUE NÃO FAZER:
-ERRADO: "Há quanto tempo você opera? (Lembre de ler a situação do cliente)"
-CERTO: "Há quanto tempo você opera no mercado?"
-
-ERRADO: "Olá Renato. ||| Vou adequar o tom e perguntar sobre seu perfil."
-CERTO: "Olá Renato. ||| Há quanto tempo você opera?"
-
+EXEMPLO ERRADO: "Há quanto tempo você opera? (Lembre de ler a situação do cliente)"
+EXEMPLO CERTO: "Há quanto tempo você opera no mercado?"
 
 # TOM
 Profissional, consultivo, técnico. Vocabulário do mercado (banca, stake, drawdown, tilt, exposição). SEM gírias ("pô", "cara", "brother"). SEM emojis. Direto.
@@ -207,8 +271,44 @@ app.post("/chat", async (req, res) => {
       });
     }
 
+    // RATE LIMIT (anti-abuse)
+    if (!checarRateLimit(cliente_id)) {
+      console.log(`[${new Date().toISOString()}] Cliente ${cliente_id} BLOQUEADO por rate limit`);
+      return res.json({
+        resposta_1: "Recebi várias mensagens suas em sequência.",
+        resposta_2: "Vou te chamar daqui a pouco para conversarmos com mais calma.",
+        resposta: "Recebi várias mensagens suas em sequência. Vou te chamar daqui a pouco.",
+        transferir_humano: false,
+        tem_segunda_parte: true,
+      });
+    }
+
     console.log(`[${new Date().toISOString()}] Cliente ${cliente_id}: ${mensagem}`);
 
+    // CACHE DE SAUDAÇÃO (economia de tokens!)
+    if (detectarSaudacao(mensagem)) {
+      console.log(`[${new Date().toISOString()}] >>> CACHE: saudação detectada, sem chamada à IA`);
+      const cached = respostaSaudacao(nome_cliente);
+
+      // Salva no histórico mesmo assim
+      const historico = pegarHistorico(cliente_id);
+      historico.mensagens.push({ role: "user", content: mensagem });
+      historico.mensagens.push({ role: "assistant", content: `${cached.r1} ||| ${cached.r2}` });
+
+      // Aplica delay (humanização)
+      await aguardar(calcularDelay(mensagem));
+
+      return res.json({
+        resposta_1: cached.r1,
+        resposta_2: cached.r2,
+        resposta: `${cached.r1} ${cached.r2}`,
+        transferir_humano: false,
+        tem_segunda_parte: true,
+        cache: true,
+      });
+    }
+
+    // CHAMADA NORMAL À IA
     const delayCalculado = calcularDelay(mensagem);
     console.log(`[${new Date().toISOString()}] Delay calculado: ${Math.round(delayCalculado)}ms`);
 
@@ -236,6 +336,11 @@ app.post("/chat", async (req, res) => {
 
     const textoResposta = resposta.choices[0].message.content;
     historico.mensagens.push({ role: "assistant", content: textoResposta });
+
+    // Log de uso de tokens (monitoramento)
+    if (resposta.usage) {
+      console.log(`[${new Date().toISOString()}] Tokens usados: ${resposta.usage.total_tokens} (prompt: ${resposta.usage.prompt_tokens}, resposta: ${resposta.usage.completion_tokens})`);
+    }
 
     const transferir = textoResposta.includes("[TRANSFERIR_HUMANO]");
     const respostaLimpa = textoResposta.replace("[TRANSFERIR_HUMANO]", "").trim();
@@ -282,6 +387,7 @@ app.post("/resetar", (req, res) => {
   if (!cliente_id) return res.status(400).json({ erro: "cliente_id obrigatório" });
 
   conversas.delete(cliente_id);
+  rateLimitClientes.delete(cliente_id);
   return res.json({ ok: true, mensagem: `Conversa do cliente ${cliente_id} resetada` });
 });
 
@@ -289,11 +395,13 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "2.5.4 (volta pro 70b + anti-vazamento)",
+    versao: "3.0 (cache + anti-abuse + histórico 10)",
     conversas_ativas: conversas.size,
+    clientes_em_rate_limit: rateLimitClientes.size,
   });
 });
 
+// Limpeza periódica
 setInterval(() => {
   const agora = Date.now();
   for (const [id, dados] of conversas.entries()) {
@@ -301,11 +409,16 @@ setInterval(() => {
       conversas.delete(id);
     }
   }
+  for (const [id, dados] of rateLimitClientes.entries()) {
+    if (agora - dados.inicio > RATE_LIMIT_WINDOW_MS) {
+      rateLimitClientes.delete(id);
+    }
+  }
 }, 5 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
-  console.log(`📡 Endpoint do BotConversa: POST /chat`);
-  console.log(`🆕 Versão 2.5.4: 70b + anti-vazamento`);
+  console.log(`📡 Endpoint: POST /chat`);
+  console.log(`🆕 Versão 3.0: cache de saudações + anti-abuse + histórico de 10 msgs`);
 });
