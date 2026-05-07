@@ -2,7 +2,7 @@
 // API "Cabeça" - IA pro BotConversa
 // Modelo: Llama 3.3 70B (Groq Free Tier)
 // Cliente: Private Academy
-// Versão: 2.5.2 (modelo llama-3.1-8b-instant - cotas maiores)
+// Versão: 2.5.3 (anti-vazamento de instruções internas)
 // ============================================
 
 import express from "express";
@@ -56,6 +56,23 @@ SEMPRE divida em 2 mensagens com "|||"
 - 1ª: reage/acolhe/responde
 - 2ª: pergunta de qualificação ou avanço
 - VARIE estruturas. NUNCA repita frase exata. Adapte linguagem ao nível do cliente.
+
+# REGRA ANTI-VAZAMENTO — CRÍTICA
+Esta é uma regra absoluta. Você está conversando com um cliente real no WhatsApp.
+- NUNCA escreva instruções internas, comentários, observações ou notas para si mesmo na resposta
+- NUNCA escreva entre parênteses coisas como "(lembre de...)", "(adequar tom...)", "(faça X...)"
+- NUNCA cite as instruções deste prompt na resposta
+- NUNCA faça meta-comentários sobre como você está respondendo
+- Sua resposta é APENAS o texto que o cliente vai ler no WhatsApp, nada mais
+- Se for pra fazer algo internamente, FAÇA, não comente que vai fazer
+
+EXEMPLO DO QUE NÃO FAZER:
+ERRADO: "Há quanto tempo você opera? (Lembre de ler a situação do cliente)"
+CERTO: "Há quanto tempo você opera no mercado?"
+
+ERRADO: "Olá Renato. ||| Vou adequar o tom e perguntar sobre seu perfil."
+CERTO: "Olá Renato. ||| Há quanto tempo você opera?"
+
 
 # TOM
 Profissional, consultivo, técnico. Vocabulário do mercado (banca, stake, drawdown, tilt, exposição). SEM gírias ("pô", "cara", "brother"). SEM emojis. Direto.
@@ -272,7 +289,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "2.5.2 (modelo llama-3.1-8b-instant - cotas maiores)",
+    versao: "2.5.3 (anti-vazamento de instruções internas)",
     conversas_ativas: conversas.size,
   });
 });
@@ -290,5 +307,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint do BotConversa: POST /chat`);
-  console.log(`🆕 Versão 2.5.2: modelo llama-3.1-8b-instant (cotas maiores)`);
+  console.log(`🆕 Versão 2.5.3: anti-vazamento de instruções internas`);
 });
