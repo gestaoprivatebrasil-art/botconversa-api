@@ -2,7 +2,7 @@
 // API "Cabeça" - IA pro BotConversa
 // Modelo: Llama 3.3 70B (Groq Free Tier)
 // Cliente: Private Academy
-// Versão: 2.5.3 (anti-vazamento de instruções internas)
+// Versão: 2.5.4 (volta pro 70b + anti-vazamento)
 // ============================================
 
 import express from "express";
@@ -226,7 +226,7 @@ app.post("/chat", async (req, res) => {
 
     const [resposta] = await Promise.all([
       ai.chat.completions.create({
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.3-70b-versatile",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 350,
@@ -289,7 +289,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "2.5.3 (anti-vazamento de instruções internas)",
+    versao: "2.5.4 (volta pro 70b + anti-vazamento)",
     conversas_ativas: conversas.size,
   });
 });
@@ -307,5 +307,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint do BotConversa: POST /chat`);
-  console.log(`🆕 Versão 2.5.3: anti-vazamento de instruções internas`);
+  console.log(`🆕 Versão 2.5.4: 70b + anti-vazamento`);
 });
