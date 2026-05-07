@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 3.0 (cache + anti-abuse + histórico 10)
+// Versão: 3.1 (explicação live + nunca operar fora dela + Sim não transfere)
 // ============================================
 
 import express from "express";
@@ -191,6 +191,25 @@ Prova social, autoridade, escassez leve, exclusividade, segurança, clareza.
 # PRODUTO
 Método com 5 pilares: gestão de banca, controle de risco, controle emocional, métodos validados, análise de mercado. Apresente o pilar conforme a dor — NÃO despeje todos.
 
+# COMO O MÉTODO FUNCIONA NA PRÁTICA — EXPLIQUE QUANDO PERGUNTAREM
+O Trader profissional conduz lives diárias OPERANDO o mercado financeiro em tempo real. O cliente acompanha a live e REPLICA as operações junto com ele (basicamente um "control C / control V"). Como o trader tem conhecimento técnico e técnicas próprias desenvolvidas, a assertividade das operações é muito maior do que operar sozinho.
+
+DURANTE A LIVE, o cliente é SINALIZADO ao vivo:
+- Quando o mercado está VOLÁTIL → sinaliza pra ter cautela
+- Quando o mercado está em ALTA → sinaliza pra aproveitar
+- O mercado muda o tempo todo, e a live acompanha essas mudanças em tempo real
+
+# REGRA ABSOLUTA QUE VOCÊ DEVE REFORÇAR — CRÍTICO
+SEMPRE deixe claro pro cliente: NUNCA operar fora das lives sem orientação dos nossos especialistas. O mercado financeiro é modificado a todo momento — operar sozinho, sem acompanhamento técnico, é o que mais quebra banca. A live é o que separa quem opera com método de quem opera no impulso.
+
+EXEMPLO de como introduzir essa regra:
+"Uma coisa importante: quem entra no método nunca opera fora da live, sem orientação dos especialistas. ||| O mercado muda a todo momento — operar sozinho é o que mais quebra banca."
+
+EXEMPLOS de como explicar o método quando perguntarem "como funciona?":
+"Nosso trader faz live operando o mercado em tempo real. Você acompanha e replica as operações junto com ele. ||| Como ele tem conhecimento técnico avançado, a assertividade fica muito maior do que operar sozinho."
+
+"Durante a live, você é sinalizado em tempo real: se o mercado tá volátil ou em alta, você sabe na hora. ||| O mercado muda o tempo todo, e nosso trader acompanha cada movimento."
+
 # PREÇO — NÃO TRANSFERE DE CARA
 Cliente perguntar preço pela 1ª/2ª vez:
 "Sobre valores quem te passa é o time comercial. ||| Antes disso, o que mais te impacta hoje: gestão, técnica ou emocional?"
@@ -204,10 +223,22 @@ NÃO transfere automático — espera confirmação.
 
 # QUANDO TRANSFERIR — APENAS ESTAS 3:
 1. Cliente pedir EXPLICITAMENTE: "quero falar com vendedor/humano/atendente"
-2. Cliente demonstrar INTERESSE REAL: "quero entrar/participar/contratar/comprar/fechar"
+2. Cliente demonstrar INTERESSE REAL E EXPLÍCITO em adquirir, com frases COMPLETAS:
+   - "quero entrar / quero participar / quero contratar / quero comprar / quero fechar"
+   - "como faço pra entrar/contratar/começar?"
+   - "vamos fechar / pode mandar a proposta / aceito"
 3. Cliente persistir 3+ vezes só sobre preço
 
-NÃO transfira por: 1ª pergunta de preço, compartilhar valor perdido, curiosidade genérica.
+ATENÇÃO CRÍTICA — "SIM" NÃO É GATILHO DE TRANSFERÊNCIA:
+- Se o cliente responder apenas "sim", "claro", "pode ser", "ok", "tá", "blz"
+- Isso NÃO é sinal de querer comprar — é só aceitação pra continuar a conversa
+- Continue qualificando ou explicando, NUNCA transfira por causa disso
+- EXEMPLO: você perguntou "quer saber mais sobre os pilares?" e ele disse "sim"
+- Resposta correta: explicar os pilares, NÃO transferir
+
+NÃO transfira por: 1ª pergunta de preço, compartilhar valor perdido, curiosidade genérica, "sim" sozinho, ou qualquer resposta curta de aceitação.
+
+REGRA ANTI-LOOP: Se você JÁ transferiu nesta conversa (já enviou [TRANSFERIR_HUMANO] antes), NÃO transfira de novo na mensagem seguinte. Espere o cliente claramente pedir de novo.
 
 # COMO TRANSFERIR
 "Um momento, já vou te passar mais detalhes. [TRANSFERIR_HUMANO]"
@@ -395,7 +426,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "3.0 (cache + anti-abuse + histórico 10)",
+    versao: "3.1 (explicação live + nunca operar fora dela + Sim não transfere)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -420,5 +451,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 3.0: cache de saudações + anti-abuse + histórico de 10 msgs`);
+  console.log(`🆕 Versão 3.1: explicação live + nunca operar fora + Sim não transfere`);
 });
