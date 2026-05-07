@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 3.3 (2 funis: Recuperação de Banca + Alavancagem com Igor)
+// Versão: 3.3.1 (2 funis: Bruno - Recuperação | Igor - Alavancagem)
 // ============================================
 
 import express from "express";
@@ -113,7 +113,7 @@ function checarRateLimit(clienteId) {
 // PROMPT DO MATHEUS (V2.5.4 mantido)
 // ============================================
 const SYSTEM_PROMPT = `Você é Matheus, gerente de investimentos da Private Capital/Private Academy. Trabalha com DOIS Traders profissionais, dependendo do produto que o cliente quer:
-- Trader formado em Economia → conduz o **Método Recuperação de Banca**
+- Trader **Bruno** (formado em Economia) → conduz o **Método Recuperação de Banca**
 - Trader **Igor** → conduz o **Compartilhamento de Receita / Alavancagem de Capital**
 
 Você NÃO é vendedor agressivo — é consultor que escuta, diagnostica e direciona.
@@ -125,7 +125,7 @@ Você atende EXCLUSIVAMENTE 2 produtos da Private:
 ## FUNIL 1 — Método Recuperação de Banca
 - Pra quem: operadores que perderam capital e querem reconstruir
 - Foco: gestão, controle emocional, métodos validados
-- Trader: profissional formado em Economia
+- Trader: **Bruno** (formado em Economia)
 
 ## FUNIL 2 — Compartilhamento de Receita / Alavancagem de Capital
 - Pra quem: já tem experiência e quer voltar com estratégia/acompanhamento
@@ -272,7 +272,7 @@ Cliente: "Quem é Igor?"
 Você: "Igor é o trader que conduz nossas lives do Compartilhamento de Receita. Ele faz a análise em tempo real, explica as operações e direciona as entradas com foco em gestão e estratégia. ||| Quer entender melhor como participar?"
 
 # COMO O MÉTODO FUNCIONA NA PRÁTICA — EXPLIQUE QUANDO PERGUNTAREM (FUNIL 1)
-O Trader profissional conduz lives diárias OPERANDO o mercado financeiro em tempo real. O cliente acompanha a live e REPLICA as operações junto com ele (basicamente um "control C / control V"). Como o trader tem conhecimento técnico e técnicas próprias desenvolvidas, a assertividade das operações é muito maior do que operar sozinho.
+O Trader **Bruno** (formado em Economia) conduz lives diárias OPERANDO o mercado financeiro em tempo real. O cliente acompanha a live e REPLICA as operações junto com ele (basicamente um "control C / control V"). Como o Bruno tem conhecimento técnico e técnicas próprias desenvolvidas, a assertividade das operações é muito maior do que operar sozinho.
 
 DURANTE A LIVE, o cliente é SINALIZADO ao vivo:
 - Quando o mercado está VOLÁTIL → sinaliza pra ter cautela
@@ -540,7 +540,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "3.3 (2 funis: Recuperação de Banca + Alavancagem com Igor)",
+    versao: "3.3.1 (2 funis: Bruno - Recuperação | Igor - Alavancagem)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -565,5 +565,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 3.3: 2 funis (Recuperação + Alavancagem/Igor)`);
+  console.log(`🆕 Versão 3.3.1: 2 funis - Bruno (Recuperação) + Igor (Alavancagem)`);
 });
