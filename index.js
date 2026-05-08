@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 4.0 (migrou pra Cerebras - 1M tokens/dia)
+// Versão: 4.1 (Cerebras + detecção automática de funil_origem)
 // ============================================
 
 import express from "express";
@@ -499,7 +499,7 @@ app.post("/chat", async (req, res) => {
   const inicioRequest = Date.now();
 
   try {
-    const { cliente_id, mensagem, nome_cliente } = req.body;
+    const { cliente_id, mensagem, nome_cliente, funil_origem } = req.body;
 
     if (!cliente_id || !mensagem) {
       return res.status(400).json({
@@ -520,6 +520,9 @@ app.post("/chat", async (req, res) => {
     }
 
     console.log(`[${new Date().toISOString()}] Cliente ${cliente_id}: ${mensagem}`);
+    if (funil_origem) {
+      console.log(`[${new Date().toISOString()}] >>> Funil de origem: ${funil_origem}`);
+    }
 
     // CACHE DE SAUDAÇÃO (economia de tokens!)
     if (detectarSaudacao(mensagem)) {
@@ -551,9 +554,17 @@ app.post("/chat", async (req, res) => {
     const historico = pegarHistorico(cliente_id);
     historico.mensagens.push({ role: "user", content: mensagem });
 
+    // Monta info do funil de origem
+    let infoFunil = "";
+    if (funil_origem === "recuperacao_banca") {
+      infoFunil = "\n\nIMPORTANTE: Este cliente JÁ ENTROU pelo Funil 1 (Método Recuperação de Banca). Ele já viu o anúncio/landing dessa frente e quer saber sobre RECUPERAÇÃO DE BANCA. NÃO pergunte qual funil ele veio. NÃO ofereça os 2 produtos. Foque APENAS em Recuperação de Banca (com Bruno) desde a primeira mensagem.";
+    } else if (funil_origem === "alavancagem" || funil_origem === "compartilhamento_receita") {
+      infoFunil = "\n\nIMPORTANTE: Este cliente JÁ ENTROU pelo Funil 2 (Compartilhamento de Receita / Alavancagem de Capital). Ele já viu o anúncio/landing dessa frente e quer saber sobre ALAVANCAGEM. NÃO pergunte qual funil ele veio. NÃO ofereça os 2 produtos. Foque APENAS em Alavancagem (com Igor) desde a primeira mensagem.";
+    }
+
     const systemPromptPersonalizado = nome_cliente
-      ? `${SYSTEM_PROMPT}\n\nNome do cliente: ${nome_cliente} (NÃO confunda com seu nome Matheus)`
-      : SYSTEM_PROMPT;
+      ? `${SYSTEM_PROMPT}\n\nNome do cliente: ${nome_cliente} (NÃO confunda com seu nome Matheus)${infoFunil}`
+      : `${SYSTEM_PROMPT}${infoFunil}`;
 
     const mensagensParaIA = [
       { role: "system", content: systemPromptPersonalizado },
@@ -631,7 +642,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "4.0 (Cerebras - 1M tokens/dia + decide 1 ou 2 mensagens)",
+    versao: "4.1 (Cerebras + detecção automática de funil_origem)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -656,5 +667,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 4.0: Cerebras - 1M tokens/dia (Llama 3.3 70B)`);
+  console.log(`🆕 Versão 4.1: Cerebras + detecção automática de funil_origem`);
 });
