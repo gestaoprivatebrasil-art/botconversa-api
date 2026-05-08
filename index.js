@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.0 (Gemini 2.0 Flash via OpenAI compat - 1500 conversas/dia)
+// Versão: 5.1 (Gemini 2.0 Flash + Retry com backoff exponencial)
 // ============================================
 
 import express from "express";
@@ -47,6 +47,41 @@ function calcularDelay(mensagemCliente) {
 
 function aguardar(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ============================================
+// RETRY COM BACKOFF EXPONENCIAL
+// ============================================
+// Tenta até 3x quando dá 429 (rate limit) ou 5xx (erro do servidor Google)
+// Espera 2s, 4s, 8s entre tentativas
+async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
+  let ultimoErro;
+
+  for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+    try {
+      return await ai.chat.completions.create({
+        model: "gemini-2.0-flash",
+        messages: mensagensParaIA,
+        temperature: 0.8,
+        max_tokens: 350,
+      });
+    } catch (erro) {
+      ultimoErro = erro;
+      const status = erro.status || erro.response?.status;
+      const ehRetentavel = status === 429 || (status >= 500 && status < 600);
+      const ehUltimaTentativa = tentativa === maxTentativas;
+
+      if (!ehRetentavel || ehUltimaTentativa) {
+        throw erro;
+      }
+
+      const espera = Math.pow(2, tentativa) * 1000; // 2s, 4s, 8s
+      console.log(`[${new Date().toISOString()}] ⚠️  Erro ${status} na tentativa ${tentativa}/${maxTentativas}. Aguardando ${espera}ms antes de tentar de novo...`);
+      await aguardar(espera);
+    }
+  }
+
+  throw ultimoErro;
 }
 
 // ============================================
@@ -572,12 +607,7 @@ app.post("/chat", async (req, res) => {
     ];
 
     const [resposta] = await Promise.all([
-      ai.chat.completions.create({
-        model: "gemini-2.0-flash",
-        messages: mensagensParaIA,
-        temperature: 0.8,
-        max_tokens: 350,
-      }),
+      chamarIAComRetry(mensagensParaIA),
       aguardar(delayCalculado),
     ]);
 
@@ -619,6 +649,19 @@ app.post("/chat", async (req, res) => {
     });
   } catch (erro) {
     console.error("Erro na rota /chat:", erro);
+
+    // Mensagem mais elegante se for rate limit que falhou mesmo após retries
+    const status = erro.status || erro.response?.status;
+    if (status === 429) {
+      return res.status(503).json({
+        erro: "Sistema temporariamente sobrecarregado",
+        resposta_1: "Tô com muitas conversas em paralelo agora.",
+        resposta_2: "Me dá uns 30 segundinhos e tenta de novo, por favor?",
+        resposta: "Tô com muitas conversas em paralelo agora. Me dá uns 30 segundinhos e tenta de novo, por favor?",
+        tem_segunda_parte: true,
+      });
+    }
+
     return res.status(500).json({
       erro: "Erro interno",
       resposta_1: "Tive um problema técnico no momento.",
@@ -642,7 +685,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.0 (Gemini 2.0 Flash - 1500 conversas/dia)",
+    versao: "5.1 (Gemini 2.0 Flash + Retry com backoff)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -667,5 +710,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.0: Gemini 2.0 Flash (1500 conversas/dia)`);
+  console.log(`🆕 Versão 5.1: Gemini 2.0 Flash + Retry com backoff`);
 });
