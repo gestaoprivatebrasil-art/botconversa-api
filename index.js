@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 4.1 (Cerebras + detecção automática de funil_origem)
+// Versão: 5.0 (Gemini 2.0 Flash via OpenAI compat - 1500 conversas/dia)
 // ============================================
 
 import express from "express";
@@ -14,8 +14,8 @@ const app = express();
 app.use(express.json());
 
 const ai = new OpenAI({
-  apiKey: process.env.CEREBRAS_API_KEY,
-  baseURL: "https://api.cerebras.ai/v1",
+  apiKey: process.env.GEMINI_API_KEY,
+  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
 });
 
 // ============================================
@@ -573,7 +573,7 @@ app.post("/chat", async (req, res) => {
 
     const [resposta] = await Promise.all([
       ai.chat.completions.create({
-        model: "llama-3.3-70b",
+        model: "gemini-2.0-flash",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 350,
@@ -642,7 +642,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "4.1 (Cerebras + detecção automática de funil_origem)",
+    versao: "5.0 (Gemini 2.0 Flash - 1500 conversas/dia)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -667,5 +667,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 4.1: Cerebras + detecção automática de funil_origem`);
+  console.log(`🆕 Versão 5.0: Gemini 2.0 Flash (1500 conversas/dia)`);
 });
