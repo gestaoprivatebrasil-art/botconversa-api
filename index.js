@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.2.1 (Gemini 2.5 Flash + funil_origem reforçado)
+// Versão: 5.2.2 (correção mensagens fragmentadas + max_tokens 500)
 // ============================================
 
 import express from "express";
@@ -63,7 +63,7 @@ async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
         model: "gemini-2.5-flash",
         messages: mensagensParaIA,
         temperature: 0.8,
-        max_tokens: 350,
+        max_tokens: 500,
       });
     } catch (erro) {
       ultimoErro = erro;
@@ -204,40 +204,42 @@ NÃO MISTURE OS FUNIS na mesma resposta. Se cliente entrou pelo Funil 1, fale s�
 Seus únicos temas são esses 2 produtos. Se cliente desviar (cripto, outros mercados, dicas operacionais), responda curto e SEMPRE retome o produto que ele veio buscar.
 
 # FORMATO (CRÍTICO) — DECIDIR ENTRE 1 OU 2 MENSAGENS
-Você decide se a resposta tem 1 OU 2 mensagens, conforme o contexto:
+Você decide se a resposta tem 1 OU 2 mensagens, conforme o contexto.
 
-## QUANDO USAR 2 MENSAGENS (com separador "|||")
-Use 2 mensagens quando a resposta tem 2 partes naturais — geralmente "reação/acolhimento" + "pergunta de qualificação ou avanço":
-- 1ª: reage/acolhe/responde o ponto
-- 2ª: pergunta de qualificação ou conduz a conversa
+## ⚠️ REGRA ABSOLUTA SOBRE O SEPARADOR "|||"
+- Use "|||" APENAS UMA VEZ na resposta (no MÁXIMO)
+- "|||" SEPARA 2 MENSAGENS COMPLETAS — nunca use no meio de uma frase
+- NUNCA use "|||" pra dividir uma frase no meio. CADA PARTE PRECISA SER UMA FRASE COMPLETA, fazendo sentido sozinha
+- Se você tem só 1 ideia/pergunta pra dizer, NÃO use "|||" — manda 1 mensagem só
+
+## ❌ EXEMPLOS ERRADOS (NUNCA FAÇA ASSIM)
+"Olá, Luis! Sou o Matheus, gerente de investimentos aqui na ||| Private Capital."  ← cortou no meio da frase!
+"Entendo. ||| OB e Copy Trade são modalidades que ||| sem método..."  ← múltiplos ||| numa resposta só!
+
+## ✅ EXEMPLO CERTO
+"Olá, Luis! Sou o Matheus, gerente de investimentos da Private Capital. ||| Há quanto tempo você opera no mercado?"
+("|||" só APARECE 1 VEZ, e cada parte é uma frase completa)
+
+## QUANDO USAR 2 MENSAGENS (com "|||" no meio)
+Use 2 mensagens quando a resposta tem 2 partes naturais — "reação/acolhimento" + "pergunta de qualificação":
+- 1ª (antes do |||): reage/acolhe/responde — DEVE SER FRASE COMPLETA
+- 2ª (depois do |||): pergunta de qualificação — DEVE SER FRASE COMPLETA
 - Cada uma: 1-3 linhas, objetiva
 
-EXEMPLO:
-"Entendo, perda recente costuma vir junto com pressa pra recuperar. ||| Há quanto tempo você opera no mercado?"
-
-"Show, fico feliz que veio direto. ||| Pra eu te direcionar melhor, há quanto tempo você opera?"
-
 ## QUANDO USAR 1 MENSAGEM (sem "|||")
-Use 1 mensagem só quando for:
-- Resposta curta de aceitação/confirmação ("show, perfeito", "beleza, tranquilo")
-- Transição/fechamento natural ("me dá um segundinho que já volto")
-- Resposta direta a pergunta simples (cliente perguntou algo objetivo, você responde objetivo)
+- Resposta curta de aceitação/confirmação ("show, perfeito", "beleza")
+- Transição/fechamento natural ("me dá um segundinho")
+- Resposta direta a pergunta simples
 - Frase de transferência (com [TRANSFERIR_HUMANO])
-- Acolhimento curto sem necessidade de pergunta logo depois
-
-EXEMPLOS:
-"Show, perfeito."
-"Tranquilo, sem problema."
-"Beleza, me dá um segundinho que já volto com tudo organizado. [TRANSFERIR_HUMANO]"
-"Sim, são exatamente 3 lives por dia: manhã, tarde e noite."
+- Quando você só tem 1 ideia ou pergunta pra fazer
 
 ## REGRA PRÁTICA
-- Pergunta + Acolhimento? → 2 mensagens
-- Só uma reação/confirmação? → 1 mensagem
+- Pergunta + Acolhimento? → 2 mensagens (1 ||| no meio)
+- Só uma reação/confirmação? → 1 mensagem (sem |||)
 - Tem que perguntar algo na sequência? → 2 mensagens
 - É só fechar/transicionar? → 1 mensagem
 
-NÃO force 2 mensagens quando 1 já dá conta. Conversa real tem variação natural — algumas trocas pedem 1 frase, outras pedem mais.
+NÃO force 2 mensagens quando 1 já dá conta. Conversa real tem variação natural.
 
 VARIE estruturas. NUNCA repita frase exata. Adapte linguagem ao nível do cliente.
 
@@ -630,6 +632,16 @@ app.post("/chat", async (req, res) => {
     if (partes.length >= 2) {
       resposta_1 = partes[0];
       resposta_2 = partes.slice(1).join(" ");
+
+      // Verificação: se a parte 1 termina no meio de uma frase (sem . ? !),
+      // a IA quebrou errado. Junta tudo em 1 mensagem só.
+      const ultimoChar = resposta_1.slice(-1);
+      const terminaComPontuacao = ['.', '!', '?', ':', ';'].includes(ultimoChar);
+      if (!terminaComPontuacao) {
+        console.log(`[${new Date().toISOString()}] ⚠️  IA quebrou ||| no meio da frase, juntando em 1 msg`);
+        resposta_1 = `${resposta_1} ${resposta_2}`.trim();
+        resposta_2 = "";
+      }
     } else if (partes.length === 1) {
       resposta_1 = partes[0];
       resposta_2 = "";
@@ -685,7 +697,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.2.1 (Gemini 2.5 Flash + funil_origem reforçado)",
+    versao: "5.2.2 (correção mensagens fragmentadas + max_tokens 500)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -710,5 +722,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.2.1: Gemini 2.5 Flash + funil_origem reforçado`);
+  console.log(`🆕 Versão 5.2.2: Correção mensagens fragmentadas`);
 });
