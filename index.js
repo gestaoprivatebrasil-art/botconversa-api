@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 3.4 (xará Matheus + cadência + anti-repetição + termo único Funil 2)
+// Versão: 3.5 (decide 1 ou 2 mensagens conforme contexto)
 // ============================================
 
 import express from "express";
@@ -168,12 +168,43 @@ NÃO MISTURE OS FUNIS na mesma resposta. Se cliente entrou pelo Funil 1, fale s�
 # FOCO ABSOLUTO
 Seus únicos temas são esses 2 produtos. Se cliente desviar (cripto, outros mercados, dicas operacionais), responda curto e SEMPRE retome o produto que ele veio buscar.
 
-# FORMATO (CRÍTICO)
-SEMPRE divida em 2 mensagens com "|||"
+# FORMATO (CRÍTICO) — DECIDIR ENTRE 1 OU 2 MENSAGENS
+Você decide se a resposta tem 1 OU 2 mensagens, conforme o contexto:
+
+## QUANDO USAR 2 MENSAGENS (com separador "|||")
+Use 2 mensagens quando a resposta tem 2 partes naturais — geralmente "reação/acolhimento" + "pergunta de qualificação ou avanço":
+- 1ª: reage/acolhe/responde o ponto
+- 2ª: pergunta de qualificação ou conduz a conversa
 - Cada uma: 1-3 linhas, objetiva
-- 1ª: reage/acolhe/responde
-- 2ª: pergunta de qualificação ou avanço
-- VARIE estruturas. NUNCA repita frase exata. Adapte linguagem ao nível do cliente.
+
+EXEMPLO:
+"Entendo, perda recente costuma vir junto com pressa pra recuperar. ||| Há quanto tempo você opera no mercado?"
+
+"Show, fico feliz que veio direto. ||| Pra eu te direcionar melhor, há quanto tempo você opera?"
+
+## QUANDO USAR 1 MENSAGEM (sem "|||")
+Use 1 mensagem só quando for:
+- Resposta curta de aceitação/confirmação ("show, perfeito", "beleza, tranquilo")
+- Transição/fechamento natural ("me dá um segundinho que já volto")
+- Resposta direta a pergunta simples (cliente perguntou algo objetivo, você responde objetivo)
+- Frase de transferência (com [TRANSFERIR_HUMANO])
+- Acolhimento curto sem necessidade de pergunta logo depois
+
+EXEMPLOS:
+"Show, perfeito."
+"Tranquilo, sem problema."
+"Beleza, me dá um segundinho que já volto com tudo organizado. [TRANSFERIR_HUMANO]"
+"Sim, são exatamente 3 lives por dia: manhã, tarde e noite."
+
+## REGRA PRÁTICA
+- Pergunta + Acolhimento? → 2 mensagens
+- Só uma reação/confirmação? → 1 mensagem
+- Tem que perguntar algo na sequência? → 2 mensagens
+- É só fechar/transicionar? → 1 mensagem
+
+NÃO force 2 mensagens quando 1 já dá conta. Conversa real tem variação natural — algumas trocas pedem 1 frase, outras pedem mais.
+
+VARIE estruturas. NUNCA repita frase exata. Adapte linguagem ao nível do cliente.
 
 # REGRA ANTI-VAZAMENTO — CRÍTICA
 Você está conversando com um cliente real no WhatsApp.
@@ -600,7 +631,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "3.4 (xará Matheus + cadência + anti-repetição + termo único Funil 2)",
+    versao: "3.5 (decide 1 ou 2 mensagens conforme contexto)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -625,5 +656,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 3.4: xará + cadência + anti-repetição + termo único Funil 2`);
+  console.log(`🆕 Versão 3.5: decide 1 ou 2 mensagens conforme contexto`);
 });
