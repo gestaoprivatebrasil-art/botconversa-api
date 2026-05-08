@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.2.2 (correção mensagens fragmentadas + max_tokens 500)
+// Versão: 5.2.3 (Private Academy + correção mensagens fragmentadas)
 // ============================================
 
 import express from "express";
@@ -109,7 +109,7 @@ function respostaSaudacao(nome) {
   // Resposta variada (escolhida aleatoriamente pra não ficar igual)
   const variacoes = [
     {
-      r1: nome ? `Olá, ${nome}. Sou o Matheus, gerente da Private Capital.` : `Olá. Sou o Matheus, gerente da Private Capital.`,
+      r1: nome ? `Olá, ${nome}. Sou o Matheus, gerente da Private Academy.` : `Olá. Sou o Matheus, gerente da Private Academy.`,
       r2: `Vim te ajudar com o Método Recuperação de Banca. Há quanto tempo você opera no mercado?`,
     },
     {
@@ -117,7 +117,7 @@ function respostaSaudacao(nome) {
       r2: `Sou o Matheus daqui. Pra eu te orientar melhor, há quanto tempo você opera e em qual modalidade?`,
     },
     {
-      r1: nome ? `${nome}, tudo bem? Aqui é o Matheus.` : `Tudo bem? Aqui é o Matheus, da Private Capital.`,
+      r1: nome ? `${nome}, tudo bem? Aqui é o Matheus.` : `Tudo bem? Aqui é o Matheus, da Private Academy.`,
       r2: `Vamos direto ao ponto. Há quanto tempo você opera e em que mercado?`,
     },
   ];
@@ -147,7 +147,7 @@ function checarRateLimit(clienteId) {
 // ============================================
 // PROMPT DO MATHEUS (V2.5.4 mantido)
 // ============================================
-const SYSTEM_PROMPT = `Você é Matheus, gerente de investimentos da Private Capital/Private Academy. Trabalha com DOIS Traders profissionais, dependendo do produto que o cliente quer:
+const SYSTEM_PROMPT = `Você é Matheus, gerente de investimentos da Private Academy. Trabalha com DOIS Traders profissionais, dependendo do produto que o cliente quer:
 - Trader **Bruno** (formado em Economia) → conduz o **Método Recuperação de Banca**
 - Trader **Igor** → conduz o **Compartilhamento de Receita / Alavancagem de Capital**
 
@@ -213,11 +213,11 @@ Você decide se a resposta tem 1 OU 2 mensagens, conforme o contexto.
 - Se você tem só 1 ideia/pergunta pra dizer, NÃO use "|||" — manda 1 mensagem só
 
 ## ❌ EXEMPLOS ERRADOS (NUNCA FAÇA ASSIM)
-"Olá, Luis! Sou o Matheus, gerente de investimentos aqui na ||| Private Capital."  ← cortou no meio da frase!
+"Olá, Luis! Sou o Matheus, gerente de investimentos aqui na ||| Private Academy."  ← cortou no meio da frase!
 "Entendo. ||| OB e Copy Trade são modalidades que ||| sem método..."  ← múltiplos ||| numa resposta só!
 
 ## ✅ EXEMPLO CERTO
-"Olá, Luis! Sou o Matheus, gerente de investimentos da Private Capital. ||| Há quanto tempo você opera no mercado?"
+"Olá, Luis! Sou o Matheus, gerente de investimentos da Private Academy. ||| Há quanto tempo você opera no mercado?"
 ("|||" só APARECE 1 VEZ, e cada parte é uma frase completa)
 
 ## QUANDO USAR 2 MENSAGENS (com "|||" no meio)
@@ -258,7 +258,7 @@ EXEMPLO CERTO: "Há quanto tempo você opera no mercado?"
 Profissional, consultivo, técnico. Vocabulário do mercado (banca, stake, drawdown, tilt, exposição). SEM gírias ("pô", "cara", "brother"). SEM emojis. Direto.
 
 # IDENTIDADE
-NUNCA admita ser IA/bot. Se perguntarem: "Sou o Matheus, gerente da Private Capital. ||| Foca aqui: o que você quer recuperar?"
+NUNCA admita ser IA/bot. Se perguntarem: "Sou o Matheus, gerente da Private Academy. ||| Foca aqui: o que você quer recuperar?"
 
 # QUALIFICAÇÃO (1 pergunta por vez, naturalmente — NÃO QUEIMAR ETAPAS)
 Faça as perguntas com calma, UMA POR VEZ. Acolha a resposta antes de avançar pra próxima:
@@ -697,7 +697,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.2.2 (correção mensagens fragmentadas + max_tokens 500)",
+    versao: "5.2.3 (Private Academy + correção mensagens fragmentadas)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -722,5 +722,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.2.2: Correção mensagens fragmentadas`);
+  console.log(`🆕 Versão 5.2.3: Private Academy + correção mensagens`);
 });
