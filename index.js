@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.2.3 (Private Academy + correção mensagens fragmentadas)
+// Versão: 5.2.4 (proteção fragmentos curtos + max_tokens 600)
 // ============================================
 
 import express from "express";
@@ -63,7 +63,7 @@ async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
         model: "gemini-2.5-flash",
         messages: mensagensParaIA,
         temperature: 0.8,
-        max_tokens: 500,
+        max_tokens: 600,
       });
     } catch (erro) {
       ultimoErro = erro;
@@ -633,14 +633,25 @@ app.post("/chat", async (req, res) => {
       resposta_1 = partes[0];
       resposta_2 = partes.slice(1).join(" ");
 
-      // Verificação: se a parte 1 termina no meio de uma frase (sem . ? !),
-      // a IA quebrou errado. Junta tudo em 1 mensagem só.
-      const ultimoChar = resposta_1.slice(-1);
-      const terminaComPontuacao = ['.', '!', '?', ':', ';'].includes(ultimoChar);
-      if (!terminaComPontuacao) {
-        console.log(`[${new Date().toISOString()}] ⚠️  IA quebrou ||| no meio da frase, juntando em 1 msg`);
-        resposta_1 = `${resposta_1} ${resposta_2}`.trim();
+      // Verificação 1: se alguma parte é absurdamente curta (1-3 caracteres),
+      // é fragmento. Mantém apenas a parte que tem conteúdo real.
+      if (resposta_2.length <= 3) {
+        console.log(`[${new Date().toISOString()}] ⚠️  Parte 2 muito curta ("${resposta_2}"), descartando`);
         resposta_2 = "";
+      } else if (resposta_1.length <= 3) {
+        console.log(`[${new Date().toISOString()}] ⚠️  Parte 1 muito curta ("${resposta_1}"), promovendo parte 2`);
+        resposta_1 = resposta_2;
+        resposta_2 = "";
+      } else {
+        // Verificação 2: se a parte 1 termina no meio de uma frase (sem . ? !),
+        // a IA quebrou errado. Junta tudo em 1 mensagem só.
+        const ultimoChar = resposta_1.slice(-1);
+        const terminaComPontuacao = ['.', '!', '?', ':', ';'].includes(ultimoChar);
+        if (!terminaComPontuacao) {
+          console.log(`[${new Date().toISOString()}] ⚠️  IA quebrou ||| no meio da frase, juntando em 1 msg`);
+          resposta_1 = `${resposta_1} ${resposta_2}`.trim();
+          resposta_2 = "";
+        }
       }
     } else if (partes.length === 1) {
       resposta_1 = partes[0];
@@ -697,7 +708,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.2.3 (Private Academy + correção mensagens fragmentadas)",
+    versao: "5.2.4 (proteção fragmentos curtos + max_tokens 600)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -722,5 +733,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.2.3: Private Academy + correção mensagens`);
+  console.log(`🆕 Versão 5.2.4: Proteção fragmentos curtos + max_tokens 600`);
 });
