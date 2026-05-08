@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 3.5 (decide 1 ou 2 mensagens conforme contexto)
+// Versão: 4.0 (migrou pra Cerebras - 1M tokens/dia)
 // ============================================
 
 import express from "express";
@@ -14,8 +14,8 @@ const app = express();
 app.use(express.json());
 
 const ai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
+  apiKey: process.env.CEREBRAS_API_KEY,
+  baseURL: "https://api.cerebras.ai/v1",
 });
 
 // ============================================
@@ -562,7 +562,7 @@ app.post("/chat", async (req, res) => {
 
     const [resposta] = await Promise.all([
       ai.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.3-70b",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 350,
@@ -631,7 +631,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "3.5 (decide 1 ou 2 mensagens conforme contexto)",
+    versao: "4.0 (Cerebras - 1M tokens/dia + decide 1 ou 2 mensagens)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -656,5 +656,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 3.5: decide 1 ou 2 mensagens conforme contexto`);
+  console.log(`🆕 Versão 4.0: Cerebras - 1M tokens/dia (Llama 3.3 70B)`);
 });
