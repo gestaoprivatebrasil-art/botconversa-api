@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.2 (Gemini 2.5 Flash + retry com backoff exponencial)
+// Versão: 5.2.1 (Gemini 2.5 Flash + funil_origem reforçado)
 // ============================================
 
 import express from "express";
@@ -592,9 +592,9 @@ app.post("/chat", async (req, res) => {
     // Monta info do funil de origem
     let infoFunil = "";
     if (funil_origem === "recuperacao_banca") {
-      infoFunil = "\n\nIMPORTANTE: Este cliente JÁ ENTROU pelo Funil 1 (Método Recuperação de Banca). Ele já viu o anúncio/landing dessa frente e quer saber sobre RECUPERAÇÃO DE BANCA. NÃO pergunte qual funil ele veio. NÃO ofereça os 2 produtos. Foque APENAS em Recuperação de Banca (com Bruno) desde a primeira mensagem.";
+      infoFunil = "\n\n========== ⚠️ CONTEXTO OBRIGATÓRIO DESTA CONVERSA ⚠️ ==========\nEste cliente VEIO PELO FUNIL 1 (Método Recuperação de Banca) — JÁ FOI MARCADO no nosso sistema.\n\nREGRAS ABSOLUTAS:\n1. ❌ PROIBIDO perguntar 'você veio pelo Recuperação de Banca ou Compartilhamento de Receita?' — você JÁ SABE que é Recuperação de Banca.\n2. ❌ PROIBIDO oferecer ou mencionar o Funil 2 (Compartilhamento de Receita / Alavancagem) — esse cliente NÃO VEIO POR ESSE FUNIL.\n3. ✅ FOCO ABSOLUTO em Recuperação de Banca (com Bruno) desde a primeira mensagem.\n4. ✅ Se o cliente apenas disser o nome dele (ex: 'roberto'), responda saudando e fazendo a 1ª pergunta de qualificação SOBRE RECUPERAÇÃO (tempo de mercado, modalidade), JAMAIS perguntando qual funil.\n\nIGNORE a regra de 'detectar funil pela mensagem' — você JÁ TEM O FUNIL DEFINIDO.\n=================================================================";
     } else if (funil_origem === "alavancagem" || funil_origem === "compartilhamento_receita") {
-      infoFunil = "\n\nIMPORTANTE: Este cliente JÁ ENTROU pelo Funil 2 (Compartilhamento de Receita / Alavancagem de Capital). Ele já viu o anúncio/landing dessa frente e quer saber sobre ALAVANCAGEM. NÃO pergunte qual funil ele veio. NÃO ofereça os 2 produtos. Foque APENAS em Alavancagem (com Igor) desde a primeira mensagem.";
+      infoFunil = "\n\n========== ⚠️ CONTEXTO OBRIGATÓRIO DESTA CONVERSA ⚠️ ==========\nEste cliente VEIO PELO FUNIL 2 (Compartilhamento de Receita / Alavancagem de Capital) — JÁ FOI MARCADO no nosso sistema.\n\nREGRAS ABSOLUTAS:\n1. ❌ PROIBIDO perguntar 'você veio pelo Recuperação de Banca ou Compartilhamento de Receita?' — você JÁ SABE que é Alavancagem.\n2. ❌ PROIBIDO oferecer ou mencionar o Funil 1 (Recuperação de Banca) — esse cliente NÃO VEIO POR ESSE FUNIL.\n3. ✅ FOCO ABSOLUTO em Alavancagem (com Igor) desde a primeira mensagem.\n4. ✅ Se o cliente apenas disser o nome dele, responda saudando e fazendo a 1ª pergunta de qualificação SOBRE ALAVANCAGEM (experiência no mercado), JAMAIS perguntando qual funil.\n\nIGNORE a regra de 'detectar funil pela mensagem' — você JÁ TEM O FUNIL DEFINIDO.\n=================================================================";
     }
 
     const systemPromptPersonalizado = nome_cliente
@@ -685,7 +685,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.2 (Gemini 2.5 Flash + retry com backoff exponencial)",
+    versao: "5.2.1 (Gemini 2.5 Flash + funil_origem reforçado)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -710,5 +710,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.2: Gemini 2.5 Flash + retry com backoff`);
+  console.log(`🆕 Versão 5.2.1: Gemini 2.5 Flash + funil_origem reforçado`);
 });
