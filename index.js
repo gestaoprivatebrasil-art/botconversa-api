@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.1 (Gemini 2.0 Flash + Retry com backoff exponencial)
+// Versão: 5.2 (Gemini 2.5 Flash + retry com backoff exponencial)
 // ============================================
 
 import express from "express";
@@ -52,7 +52,7 @@ function aguardar(ms) {
 // ============================================
 // RETRY COM BACKOFF EXPONENCIAL
 // ============================================
-// Tenta até 3x quando dá 429 (rate limit) ou 5xx (erro do servidor Google)
+// Tenta até 3x quando dá 429 (rate limit) ou 5xx (erro do servidor)
 // Espera 2s, 4s, 8s entre tentativas
 async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
   let ultimoErro;
@@ -60,7 +60,7 @@ async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
     try {
       return await ai.chat.completions.create({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 350,
@@ -685,7 +685,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.1 (Gemini 2.0 Flash + Retry com backoff)",
+    versao: "5.2 (Gemini 2.5 Flash + retry com backoff exponencial)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -710,5 +710,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.1: Gemini 2.0 Flash + Retry com backoff`);
+  console.log(`🆕 Versão 5.2: Gemini 2.5 Flash + retry com backoff`);
 });
