@@ -21,7 +21,7 @@ const ai = new Anthropic({
 // CONFIGURAÇÕES
 // ============================================
 const conversas = new Map();
-const LIMITE_HISTORICO = 10;
+const LIMITE_HISTORICO = 50;
 const EXPIRACAO_MS = 30 * 60 * 1000;
 
 // Anti-abuse: max 30 mensagens por hora por cliente
