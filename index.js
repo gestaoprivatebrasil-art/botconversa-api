@@ -1,11 +1,11 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 6.1 (voltou pro Groq Llama 3.3 70B - estável)
+// Versão: 7.0 (Claude Haiku 4.5 - Anthropic API)
 // ============================================
 
 import express from "express";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,9 +13,8 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const ai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
+const ai = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // ============================================
@@ -54,16 +53,17 @@ function aguardar(ms) {
 // ============================================
 // Tenta até 3x quando dá 429 (rate limit) ou 5xx (erro do servidor)
 // Espera 2s, 4s, 8s entre tentativas
-async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
+async function chamarIAComRetry(systemPrompt, mensagensConversa, maxTentativas = 3) {
   let ultimoErro;
 
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
     try {
-      return await ai.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: mensagensParaIA,
-        temperature: 0.8,
+      return await ai.messages.create({
+        model: "claude-haiku-4-5-20251001",
         max_tokens: 600,
+        temperature: 0.8,
+        system: systemPrompt,
+        messages: mensagensConversa,
       });
     } catch (erro) {
       ultimoErro = erro;
@@ -603,22 +603,22 @@ app.post("/chat", async (req, res) => {
       ? `${SYSTEM_PROMPT}\n\nNome do cliente: ${nome_cliente} (NÃO confunda com seu nome Matheus)${infoFunil}`
       : `${SYSTEM_PROMPT}${infoFunil}`;
 
-    const mensagensParaIA = [
-      { role: "system", content: systemPromptPersonalizado },
-      ...historico.mensagens.slice(-LIMITE_HISTORICO),
-    ];
+    // Anthropic: system fica separado, messages só tem user/assistant
+    const mensagensConversa = historico.mensagens.slice(-LIMITE_HISTORICO);
 
     const [resposta] = await Promise.all([
-      chamarIAComRetry(mensagensParaIA),
+      chamarIAComRetry(systemPromptPersonalizado, mensagensConversa),
       aguardar(delayCalculado),
     ]);
 
-    const textoResposta = resposta.choices[0].message.content;
+    // Anthropic: resposta vem em content[0].text (não em choices[0].message.content)
+    const textoResposta = resposta.content[0].text;
     historico.mensagens.push({ role: "assistant", content: textoResposta });
 
-    // Log de uso de tokens (monitoramento)
+    // Log de uso de tokens (Anthropic usa input_tokens / output_tokens)
     if (resposta.usage) {
-      console.log(`[${new Date().toISOString()}] Tokens usados: ${resposta.usage.total_tokens} (prompt: ${resposta.usage.prompt_tokens}, resposta: ${resposta.usage.completion_tokens})`);
+      const total = resposta.usage.input_tokens + resposta.usage.output_tokens;
+      console.log(`[${new Date().toISOString()}] Tokens usados: ${total} (prompt: ${resposta.usage.input_tokens}, resposta: ${resposta.usage.output_tokens})`);
     }
 
     const transferir = textoResposta.includes("[TRANSFERIR_HUMANO]");
@@ -708,7 +708,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "6.1 (voltou pro Groq Llama 3.3 70B - estável)",
+    versao: "7.0 (Claude Haiku 4.5 - Anthropic API)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -733,5 +733,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 6.1: Voltou pro Groq Llama 3.3 70B`);
+  console.log(`🆕 Versão 7.0: Claude Haiku 4.5 (Anthropic API)`);
 });
