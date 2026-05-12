@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 6.0 (OpenRouter Llama 3.3 70B free)
+// Versão: 6.1 (voltou pro Groq Llama 3.3 70B - estável)
 // ============================================
 
 import express from "express";
@@ -14,12 +14,8 @@ const app = express();
 app.use(express.json());
 
 const ai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-  defaultHeaders: {
-    "HTTP-Referer": "https://botconversa-api-2uty.onrender.com",
-    "X-Title": "Private Academy - IA Matheus",
-  },
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
 // ============================================
@@ -64,7 +60,7 @@ async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
     try {
       return await ai.chat.completions.create({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "llama-3.3-70b-versatile",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 600,
@@ -712,7 +708,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "6.0 (OpenRouter Llama 3.3 70B free)",
+    versao: "6.1 (voltou pro Groq Llama 3.3 70B - estável)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -737,5 +733,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 6.0: OpenRouter Llama 3.3 70B free`);
+  console.log(`🆕 Versão 6.1: Voltou pro Groq Llama 3.3 70B`);
 });
