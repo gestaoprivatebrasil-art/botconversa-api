@@ -1,7 +1,7 @@
 // ============================================
 // API "Cabeça" - IA pro BotConversa
 // Cliente: Private Academy
-// Versão: 5.2.4 (proteção fragmentos curtos + max_tokens 600)
+// Versão: 6.0 (OpenRouter Llama 3.3 70B free)
 // ============================================
 
 import express from "express";
@@ -14,8 +14,12 @@ const app = express();
 app.use(express.json());
 
 const ai = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "https://botconversa-api-2uty.onrender.com",
+    "X-Title": "Private Academy - IA Matheus",
+  },
 });
 
 // ============================================
@@ -60,7 +64,7 @@ async function chamarIAComRetry(mensagensParaIA, maxTentativas = 3) {
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
     try {
       return await ai.chat.completions.create({
-        model: "gemini-2.5-flash",
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         messages: mensagensParaIA,
         temperature: 0.8,
         max_tokens: 600,
@@ -708,7 +712,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "online",
     servico: "API Cabeça - Private Academy",
-    versao: "5.2.4 (proteção fragmentos curtos + max_tokens 600)",
+    versao: "6.0 (OpenRouter Llama 3.3 70B free)",
     conversas_ativas: conversas.size,
     clientes_em_rate_limit: rateLimitClientes.size,
   });
@@ -733,5 +737,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 API rodando na porta ${PORT}`);
   console.log(`📡 Endpoint: POST /chat`);
-  console.log(`🆕 Versão 5.2.4: Proteção fragmentos curtos + max_tokens 600`);
+  console.log(`🆕 Versão 6.0: OpenRouter Llama 3.3 70B free`);
 });
